@@ -38,7 +38,8 @@ Built on my existing lab (Wazuh SIEM already deployed). This project adds endpoi
 | Wazuh | SIEM: indexer, manager, dashboard | Ubuntu Server |
 | PC01 | Domain-joined workstation, the monitored endpoint and the "victim" | Windows 11 |
 
-> Screenshot to add: the Wazuh Endpoints page showing PC01 active.
+<img width="1511" height="944" alt="01-pc01-agent-active" src="https://github.com/user-attachments/assets/98365e1a-d7c6-40e0-bab2-01337d9e1a1d" />
+
 
 ---
 
@@ -63,7 +64,8 @@ Sysmon writes to its own event channel, which the Wazuh agent does not collect b
 </localfile>
 ```
 
-> Screenshot to add: Threat Hunting showing `rule.groups:sysmon` events arriving from PC01.
+<img width="1510" height="905" alt="02-sysmon-events-flowing" src="https://github.com/user-attachments/assets/a15a1846-e3ac-4613-9d5c-e0269a107df8" />
+
 
 ---
 
@@ -77,7 +79,8 @@ The account creation actually failed (password policy rejected it), **but Wazuh 
 
 **Key lesson:** the native Windows "account created" event (4720) never fired, because no account was created. The only reason this was detected is that **Sysmon recorded the command being run**, not just the outcome. Sysmon detects the *attempt*, not only success. This is exactly why endpoint telemetry matters.
 
-> Screenshot to add: the rule 92040 (Level 12) alert for the create-account attempt.
+<img width="1507" height="904" alt="03-createaccount-detected-rule92040" src="https://github.com/user-attachments/assets/fb561591-b3f7-4412-86ff-0c746948b71c" />
+
 
 ---
 
@@ -87,7 +90,8 @@ Attackers run reconnaissance commands immediately after landing on a host. These
 
 **Confirming the gap:** running `whoami` produced **zero alerts**. Sysmon recorded it, but no rule matched, so as an analyst I was blind to it.
 
-> Screenshot to add: "No results" when searching for whoami before the rule existed.
+<img width="1510" height="902" alt="04-whoami-no-detection" src="https://github.com/user-attachments/assets/6a857bbd-690f-47d3-8ea1-f934909fbbf2" />
+
 
 **Filling the gap:** I wrote custom rules in `local_rules.xml` (the file reserved for user rules, which survives Wazuh upgrades). Each matches a Sysmon process-creation event (Event ID 1) for a specific recon tool and maps to its ATT&CK technique:
 
@@ -122,7 +126,10 @@ Attackers run reconnaissance commands immediately after landing on a host. These
 
 After a ruleset reload, running each command produced a clean, named, ATT&CK-mapped alert.
 
-> Screenshot to add: rule 100010 firing with its "Reconnaissance: whoami executed" description, and/or the rule 100010 definition page showing the MITRE mapping.
+<img width="1509" height="903" alt="05-rule100010-whoami-firing" src="https://github.com/user-attachments/assets/e382e303-d6d5-4ab5-9a42-1f083fa3a5e8" />
+<img width="1512" height="902" alt="06-rule100010-definition-mitre" src="https://github.com/user-attachments/assets/c9f93654-be3a-4d04-b582-bcc58e7c7140" />
+
+
 
 **Design choice worth noting:** I match on `originalFileName` (the name baked into the file's metadata) rather than the path, because it survives a rename. An attacker who renames `whoami.exe` to `notepad.exe` still gets caught, because the metadata does not change.
 
@@ -148,7 +155,8 @@ OriginalFileName: sysinfo.exe
 
 **Lesson:** the theoretically better field (metadata name, rename-resistant) is only better if it actually populates and matches. You validate your assumptions against real events rather than trusting them. This is the difference between a rule that looks right and a rule that works.
 
-> Screenshot to add: the raw Sysmon event showing `OriginalFileName: sysinfo.exe`.
+<img width="1269" height="502" alt="07-systeminfo-originalfilename-debug" src="https://github.com/user-attachments/assets/14d55f1c-be9b-4e1a-8341-fbb2401a1bff" />
+
 
 ---
 
@@ -171,7 +179,8 @@ A single recon command is low signal. Several in a short window from one host is
 
 Running four recon commands together produced the individual Level 6 to 8 alerts **plus** one Level 12 "possible active reconnaissance" alert. That high alert is what a real analyst, who filters by severity rather than scrolling, would actually see.
 
-> Screenshot to add: rule 100020 (Level 12) firing alongside the individual discovery alerts.
+<img width="1499" height="905" alt="08-correlation-100020-firing-before-tuning" src="https://github.com/user-attachments/assets/426dff1e-4ad3-4aa6-858d-e3efaf8d6766" />
+
 
 ---
 
@@ -191,7 +200,8 @@ After firing, the rule stays quiet for 300 seconds, so one recon burst now produ
 
 **The judgment that matters:** tuning can go too far. Too long an `ignore` could suppress a genuinely new wave of activity. The craft is cutting duplicates *without* blinding yourself. `300` seconds balances the two for a recon burst.
 
-> Screenshot to add: before tuning (two 100020 alerts for one burst) and after (one alert).
+<img width="1512" height="904" alt="09-after-tuning-single-alert" src="https://github.com/user-attachments/assets/9b80c171-dc3b-44a5-9d31-7a71ab1abb92" />
+
 
 ---
 
